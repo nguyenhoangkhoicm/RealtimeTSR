@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Realtime Traffic Sign Recognition</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" />
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    
+    <script type="text/javascript">
+      function getCookie(name) {
+        var cookieValue = null
+        if (document.cookie && document.cookie !== '') {
+          var cookies = document.cookie.split(';')
+          for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim()
+            if (cookie.substring(0, name.length + 1) === name + '=') {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
+              break
+            }
+          }
+        }
+        return cookieValue
+      }
+      
+      var csrftoken = getCookie('csrftoken')
+      
+      function sendImageToServer(imageData) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/identification/', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.setRequestHeader('X-CSRFToken', csrftoken);
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status === 200) {
+              var data = JSON.parse(xhr.responseText);
+              // Hiển thị kết quả dự đoán
+              document.getElementById('results').innerText = data.license_plate;
+            } else {
+              console.error('Error:', xhr.statusText);
+            }
+          }
+        };
+        xhr.onerror = function () {
+          console.error('Request failed.');
+        };
+        xhr.send(JSON.stringify({ image_data: imageData }));
+      }
+    
+      // Sử dụng JavaScript để đọc hình ảnh từ webcam
+      async function captureImage() {
+        const video = document.getElementById('webcam')
+        const canvas = document.createElement('canvas')
+        canvas.width = video.videoWidth
+        canvas.height = video.videoHeight
+        canvas.getContext('2d').drawImage(video, 0, 0)
+        const imageData = canvas.toDataURL('image/jpeg')
+      
+        // Kiểm tra nếu không có hình ảnh thì không gửi yêu cầu
+        if (!imageData) {
+          console.log('Không có hình ảnh.')
+          return
+        }
+      
+        // Nếu có hình ảnh, gửi yêu cầu đến máy chủ
+        sendImageToServer(imageData)
+      }
+      
+      // Bắt đầu đọc hình ảnh từ webcam
+      navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+          const video = document.getElementById('webcam')
+          video.srcObject = stream
+          video.onloadedmetadata = () => {
+            video.play()
+            setInterval(captureImage, 1000) // Gửi hình ảnh đến máy chủ mỗi 1 giây
+          }
+        })
+        .catch((error) => {
+          console.error('Error accessing the camera: ', error)
+        })
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <h1>Camera Feed</h1>
+          <video id="webcam" width="540" height="480" autoplay></video>
+        </div>
+        <div class="col-md-6">
+          <h1>Detection Results</h1>
+          <div id="results"></div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
